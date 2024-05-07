@@ -18,7 +18,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import cn.camerayuhang.cesiumwebgisserver.model.Placemark;
 import cn.camerayuhang.cesiumwebgisserver.model.PlacemarkImage;
+import cn.camerayuhang.cesiumwebgisserver.model.PlacemarkPoint;
 import cn.camerayuhang.cesiumwebgisserver.repository.PlacemarkImageRepository;
+import cn.camerayuhang.cesiumwebgisserver.repository.PlacemarkPointRepository;
 import cn.camerayuhang.cesiumwebgisserver.repository.PlacemarkRepository;
 import cn.camerayuhang.cesiumwebgisserver.util.ImageUtility;
 
@@ -35,6 +37,9 @@ public class PlacemarkController {
 
   @Autowired
   PlacemarkImageRepository placemarkImageRepository;
+
+  @Autowired
+  PlacemarkPointRepository placemarkPointRepository;
 
   // retrieve all Tutorials
   @GetMapping("/placemarkinfo")
@@ -93,7 +98,15 @@ public class PlacemarkController {
       @RequestParam(value = "cartesian_x", required = false) Double cartesian_x,
       @RequestParam(value = "cartesian_y", required = false) Double cartesian_y,
       @RequestParam(value = "cartesian_z", required = false) Double cartesian_z,
-      @RequestParam(value = "file", required = false) MultipartFile file) {
+      @RequestParam(value = "file", required = false) MultipartFile file,
+      @RequestParam(value = "default_pixel_size", defaultValue = "10") Float default_pixel_size,
+      @RequestParam(value = "default_color", defaultValue = "#0000FF") String default_color,
+      @RequestParam(value = "default_outline_color", defaultValue = "#FFFFFF") String default_outline_color,
+      @RequestParam(value = "default_outline_width", defaultValue = "2") Float default_outline_width,
+      @RequestParam(value = "highlight_pixel_size", defaultValue = "20") Float highlight_pixel_size,
+      @RequestParam(value = "highlight_color", defaultValue = "#FF0000") String highlight_color,
+      @RequestParam(value = "highlight_outline_color", defaultValue = "#FFFFFF") String highlight_outline_color,
+      @RequestParam(value = "highlight_outline_width", defaultValue = "2") Float highlight_outline_width) {
     try {
       Optional<Placemark> placemarkInfoData = placemarkRepository.findById(id);
 
@@ -101,14 +114,31 @@ public class PlacemarkController {
         Placemark _placemark = placemarkInfoData.get();
         _placemark.setName(name);
         _placemark.setDescription(description);
+        PlacemarkPoint _placemarkPoint = _placemark.getPlacemark_point();
+        _placemarkPoint.setDefault_color(default_color);
+        _placemarkPoint.setDefault_outline_color(default_outline_color);
+        _placemarkPoint.setDefault_outline_width(default_outline_width);
+        _placemarkPoint.setDefault_pixel_size(default_pixel_size);
+        _placemarkPoint.setHighlight_color(highlight_color);
+        _placemarkPoint.setHighlight_outline_color(highlight_outline_color);
+        _placemarkPoint.setHighlight_outline_width(highlight_outline_width);
+        _placemarkPoint.setHighlight_pixel_size(highlight_pixel_size);
         if (file != null) {
-          PlacemarkImage placemarkImage = new PlacemarkImage(file.getOriginalFilename(), file.getContentType(),
-              ImageUtility.compressImage(file.getBytes()));
-          _placemark.setPlacemark_image(placemarkImage);
+          if (_placemark.getPlacemark_image() == null) {
+            PlacemarkImage placemarkImage = new PlacemarkImage(file.getOriginalFilename(), file.getContentType(),
+                ImageUtility.compressImage(file.getBytes()));
+            _placemark.setPlacemark_image(placemarkImage);
+          } else {
+            PlacemarkImage _placemarkImage = _placemark.getPlacemark_image();
+            _placemarkImage.setImage(ImageUtility.compressImage(file.getBytes()));
+            _placemarkImage.setName(file.getOriginalFilename());
+            _placemarkImage.setType(file.getContentType());
+          }
         }
 
         // save the placemark
         _placemark = placemarkRepository.save(_placemark);
+
         if (_placemark.getPlacemark_image() != null) {
           _placemark.getPlacemark_image()
               .setImage(ImageUtility.decompressImage(_placemark.getPlacemark_image().getImage()));
@@ -125,10 +155,10 @@ public class PlacemarkController {
   }
 
   @DeleteMapping("/placemarkinfo/{id}")
-  public ResponseEntity<HttpStatus> deletePlacemark(@PathVariable("id") Long id) {
+  public ResponseEntity<String> deletePlacemark(@PathVariable("id") Long id) {
     try {
       placemarkRepository.deleteById(id);
-      return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+      return new ResponseEntity<>("Placemark has been deleted successfully!", HttpStatus.OK);
     } catch (Exception e) {
       return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -147,17 +177,31 @@ public class PlacemarkController {
   // create new placemark
   // @RequestBody只能接受"Content-Type: application/json"，可是这个无法接受文件
   @PostMapping("/placemarkinfo")
-  public ResponseEntity<Placemark> createPlacemark(@RequestParam(value = "name", defaultValue = "") String name,
+  public ResponseEntity<Placemark> createPlacemark(
+      @RequestParam(value = "name", defaultValue = "Untitled Placemark") String name,
       @RequestParam(value = "description", defaultValue = "") String description,
       @RequestParam("longitude") Double longitude,
       @RequestParam("latitude") Double latitude, @RequestParam("height") Double height,
       @RequestParam("cartesian_x") Double cartesian_x, @RequestParam("cartesian_y") Double cartesian_y,
       @RequestParam("cartesian_z") Double cartesian_z,
-      @RequestParam(value = "file", required = false) MultipartFile file) {
+      @RequestParam(value = "file", required = false) MultipartFile file,
+      @RequestParam(value = "default_pixel_size", defaultValue = "10") Float default_pixel_size,
+      @RequestParam(value = "default_color", defaultValue = "#0000FF") String default_color,
+      @RequestParam(value = "default_outline_color", defaultValue = "#FFFFFF") String default_outline_color,
+      @RequestParam(value = "default_outline_width", defaultValue = "2") Float default_outline_width,
+      @RequestParam(value = "highlight_pixel_size", defaultValue = "20") Float highlight_pixel_size,
+      @RequestParam(value = "highlight_color", defaultValue = "#FF0000") String highlight_color,
+      @RequestParam(value = "highlight_outline_color", defaultValue = "#FFFFFF") String highlight_outline_color,
+      @RequestParam(value = "highlight_outline_width", defaultValue = "2") Float highlight_outline_width) {
     try {
 
       Placemark _placemark = new Placemark(name, description, longitude, latitude, height, cartesian_x, cartesian_y,
           cartesian_z);
+
+      PlacemarkPoint placemarkPoint = new PlacemarkPoint(default_pixel_size, default_color, default_outline_color,
+          default_outline_width, highlight_pixel_size, highlight_color, highlight_outline_color,
+          highlight_outline_width);
+      _placemark.setPlacemark_point(placemarkPoint);
       if (file != null) {
         PlacemarkImage placemarkImage = new PlacemarkImage(file.getOriginalFilename(), file.getContentType(),
             ImageUtility.compressImage(file.getBytes()));

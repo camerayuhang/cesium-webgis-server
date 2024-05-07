@@ -46,6 +46,10 @@ public class Placemark {
   @JoinColumn(name = "placemarkimage_id", referencedColumnName = "id")
   private PlacemarkImage placemark_image;
 
+  @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER, targetEntity = PlacemarkPoint.class)
+  @JoinColumn(name = "placemark_point", referencedColumnName = "id")
+  private PlacemarkPoint placemark_point;
+
   public Placemark() {
 
   }
@@ -140,6 +144,14 @@ public class Placemark {
 
   public void setPlacemark_image(PlacemarkImage placemark_image) {
     this.placemark_image = placemark_image;
+  }
+
+  public PlacemarkPoint getPlacemark_point() {
+    return placemark_point;
+  }
+
+  public void setPlacemark_point(PlacemarkPoint placemark_point) {
+    this.placemark_point = placemark_point;
   }
 
 }
